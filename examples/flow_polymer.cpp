@@ -317,7 +317,10 @@ try
         std::cout << "\n\n================ Starting main simulation loop ===============\n"
                   << std::flush;
 
-        SimulatorReport fullReport = simulator.run(simtimer, state);
+
+        WellStateFullyImplicitBlackoilPolymer prev_well_state;
+        SimulatorReport fullReport = simulator.run(simtimer, state, prev_well_state);
+
 
         std::cout << "\n\n================    End of simulation     ===============\n\n";
         fullReport.report(std::cout);

@@ -409,7 +409,12 @@ try
                       << std::flush;
         }
 
-        SimulatorReport fullReport = simulator.run(simtimer, state);
+
+
+        WellStateFullyImplicitBlackoilSolvent prev_well_state;
+        SimulatorReport fullReport = simulator.run(simtimer, state, prev_well_state);
+
+
 
         if( output_cout )
         {

@@ -75,10 +75,9 @@ namespace Opm
 
     template <class Implementation>
     SimulatorReport SimulatorBase<Implementation>::run(SimulatorTimer& timer,
-                                                       ReservoirState& state)
+                                                       ReservoirState& state,
+                                                       WellState& prev_well_state)
     {
-        WellState prev_well_state;
-
         // Create timers and file for writing timing info.
         Opm::time::StopWatch solver_timer;
         double stime = 0.0;
@@ -140,7 +139,15 @@ namespace Opm
             asImpl().handleAdditionalWellInflow(timer, wells_manager, well_state, wells);
 
             // write simulation state at the report stage
-            output_writer_.writeTimeStep( timer, state, well_state );
+
+            InitConfigConstPtr initConfig = eclipse_state_->getInitConfig();
+
+
+            if (initConfig->getRestartInitiated() && ((initConfig->getRestartStep()) == (timer.currentStepNum()))) {
+                std::cout << "Skipping restart write in start of step " << timer.currentStepNum() << std::endl;
+            } else {
+                output_writer_.writeTimeStep( timer, state, well_state );
+            }
 
             // Max oil saturation (for VPPARS), hysteresis update.
             props_.updateSatOilMax(state.saturation());

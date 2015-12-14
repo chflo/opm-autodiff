@@ -169,6 +169,14 @@ namespace Opm
             }
         }
 
+
+        template <class State>
+        void resize(const Wells* wells, const State& state) {
+            const WellStateFullyImplicitBlackoil dummy_state;
+            init(wells, state, dummy_state) ;
+        }
+
+
         /// One rate per phase and well connection.
         std::vector<double>& perfPhaseRates() { return perfphaserates_; }
         const std::vector<double>& perfPhaseRates() const { return perfphaserates_; }

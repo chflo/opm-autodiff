@@ -137,8 +137,11 @@ namespace Opm
         /// \param[in,out] timer       governs the requested reporting timesteps
         /// \param[in,out] state       state of reservoir: pressure, fluxes
         /// \return                    simulation report, with timing data
+
+
         SimulatorReport run(SimulatorTimer& timer,
-                            ReservoirState& state);
+                            ReservoirState& state,
+                            WellState& prev_well_state);
 
     protected:
         Implementation& asImpl() { return *static_cast<Implementation*>(this); }

@@ -68,6 +68,7 @@
 #include <opm/core/props/BlackoilPropertiesBasic.hpp>
 #include <opm/core/props/BlackoilPropertiesFromDeck.hpp>
 #include <opm/core/props/rock/RockCompressibility.hpp>
+#include <opm/core/io/eclipse/EclipseReader.hpp>
 
 #include <opm/core/linalg/LinearSolverFactory.hpp>
 #include <opm/autodiff/NewtonIterationBlackoilSimple.hpp>
@@ -341,6 +342,28 @@ try
     }
 
 
+    WellStateFullyImplicitBlackoil prev_well_state;
+
+    InitConfigConstPtr initConfig = eclipseState->getInitConfig();
+    if (initConfig->getRestartInitiated()) {
+        // This is a restart, populate prev_well_state and simulator state from restart file
+
+        WellsManager wells_manager(eclipseState,
+                                   initConfig->getRestartStep(),
+                                   Opm::UgGridHelpers::numCells(grid),
+                                   Opm::UgGridHelpers::globalCell(grid),
+                                   Opm::UgGridHelpers::cartDims(grid),
+                                   Opm::UgGridHelpers::dimensions(grid),
+                                   Opm::UgGridHelpers::cell2Faces(grid),
+                                   Opm::UgGridHelpers::beginFaceCentroids(grid),
+                                   props.permeability());
+
+        const Wells* wells = wells_manager.c_wells();
+        prev_well_state.resize(wells, state); //Resize for restart step
+        Opm::init_from_restart_file(eclipseState, *(gridManager.c_grid()), pu, state, prev_well_state);
+    }
+
+
     // The capillary pressure is scaled in new_props to match the scaled capillary pressure in props.
     if (deck->hasKeyword("SWATINIT")) {
         const int numCells = Opm::UgGridHelpers::numCells(grid);
@@ -407,8 +430,6 @@ try
     Opm::TimeMapConstPtr timeMap(schedule->getTimeMap());
     SimulatorTimer simtimer;
 
-    // initialize variables
-    simtimer.init(timeMap);
 
     std::map<std::pair<int, int>, double> maxDp;
     computeMaxDp(maxDp, deck, eclipseState, grid, state, props, gravity[2]);
@@ -435,7 +456,15 @@ try
                       << std::flush;
         }
 
-        SimulatorReport fullReport = simulator.run(simtimer, state);
+
+        simtimer.init(timeMap, initConfig->getRestartInitiated(), (size_t)initConfig->getRestartStep());
+
+
+        SimulatorReport fullReport = simulator.run(simtimer, state, prev_well_state);
+
+
+
+
 
         if( output_cout )
         {
