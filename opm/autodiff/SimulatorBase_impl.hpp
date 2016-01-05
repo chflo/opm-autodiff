@@ -20,8 +20,9 @@
 */
 
 #include <algorithm>
-
+#include <opm/core/io/eclipse/EclipseReader.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Events.hpp>
+#include <opm/parser/eclipse/EclipseState/InitConfig/InitConfig.hpp>
 
 namespace Opm
 {
@@ -30,7 +31,7 @@ namespace Opm
     SimulatorBase<Implementation>::SimulatorBase(const parameter::ParameterGroup& param,
                                                  const Grid& grid,
                                                  DerivedGeology& geo,
-                                                 BlackoilPropsAdInterface& props,
+												 BlackoilPropsAdInterface& props,
                                                  const RockCompressibility* rock_comp_props,
                                                  NewtonIterationBlackoilInterface& linsolver,
                                                  const double* gravity,
@@ -80,6 +81,12 @@ namespace Opm
                                                        ReservoirState& state)
     {
         WellState prev_well_state;
+
+
+		if (output_writer_.isRestart()) {
+			// This is a restart, populate WellState and ReservoirState state objects from restart file
+			output_writer_.initFromRestartFile(props_.phaseUsage(), props_.permeability(), grid_, state, prev_well_state);
+		}
 
         // Create timers and file for writing timing info.
         Opm::time::StopWatch solver_timer;
@@ -142,7 +149,13 @@ namespace Opm
             asImpl().handleAdditionalWellInflow(timer, wells_manager, well_state, wells);
 
             // write simulation state at the report stage
-            output_writer_.writeTimeStep( timer, state, well_state );
+            InitConfigConstPtr initConfig = eclipse_state_->getInitConfig();
+
+            if (initConfig->getRestartInitiated() && ((initConfig->getRestartStep()) == (timer.currentStepNum()))) {
+                std::cout << "Skipping restart write in start of step " << timer.currentStepNum() << std::endl;
+            } else {
+                output_writer_.writeTimeStep( timer, state, well_state );
+            }
 
             // Max oil saturation (for VPPARS), hysteresis update.
             props_.updateSatOilMax(state.saturation());

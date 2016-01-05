@@ -583,7 +583,8 @@ namespace Opm
             SimulatorTimer simtimer;
 
             // initialize variables
-            simtimer.init(timeMap);
+			const auto initConfig = eclipse_state_->getInitConfig();
+			simtimer.init(timeMap, initConfig->getRestartInitiated(), (size_t)initConfig->getRestartStep());
 
 
 

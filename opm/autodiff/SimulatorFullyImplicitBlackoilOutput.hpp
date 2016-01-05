@@ -35,6 +35,8 @@
 
 #include <opm/autodiff/WellStateFullyImplicitBlackoil.hpp>
 
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+
 #include <string>
 #include <sstream>
 #include <iomanip>
@@ -194,6 +196,7 @@ namespace Opm
     /** \brief Wrapper class for VTK, Matlab, and ECL output. */
     class BlackoilOutputWriter : public OutputWriter
     {
+
     public:
         // constructor creating different sub writers
         template <class Grid>
@@ -209,7 +212,7 @@ namespace Opm
         /** \copydoc Opm::OutputWriter::writeTimeStep */
         void writeTimeStep(const SimulatorTimerInterface& timer,
                            const SimulatorState& reservoirState,
-                           const WellState& wellState,
+                           const Opm::WellState& wellState,
                            bool substep = false);
 
         /** \brief return output directory */
@@ -223,6 +226,15 @@ namespace Opm
                      WellStateFullyImplicitBlackoil& wellState,
                      const std::string& filename,
                      const int desiredReportStep);
+
+
+        void initFromRestartFile(const PhaseUsage& phaseusage,
+                                 const double* permeability,
+                                 const UnstructuredGrid& grid,
+                                 SimulatorState& simulatorstate,
+                                 WellStateFullyImplicitBlackoil& wellstate);
+
+        bool isRestart() const;
 
     protected:
         const bool output_;
@@ -238,6 +250,7 @@ namespace Opm
         std::unique_ptr< OutputWriter  > vtkWriter_;
         std::unique_ptr< OutputWriter  > matlabWriter_;
         std::unique_ptr< EclipseWriter > eclWriter_;
+        EclipseStateConstPtr eclipseState_;
     };
 
 
@@ -269,7 +282,8 @@ namespace Opm
                     new EclipseWriter(param, eclipseState, phaseUsage,
                                       parallelOutput_->numCells(),
                                       parallelOutput_->globalCell() )
-                   : 0 )
+                   : 0 ),
+        eclipseState_(eclipseState)
     {
         // For output.
         if (output_ && parallelOutput_->isIORank() ) {

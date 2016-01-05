@@ -24,11 +24,15 @@
 #include <opm/core/utility/DataMap.hpp>
 #include <opm/core/io/vtk/writeVtkData.hpp>
 #include <opm/common/ErrorMacros.hpp>
+#include <opm/core/io/eclipse/EclipseReader.hpp>
 #include <opm/core/utility/miscUtilities.hpp>
 #include <opm/core/utility/Units.hpp>
 
 #include <opm/autodiff/GridHelpers.hpp>
 #include <opm/autodiff/BackupRestore.hpp>
+
+#include <opm/parser/eclipse/EclipseState/InitConfig/InitConfig.hpp>
+
 
 #include <sstream>
 #include <iomanip>
@@ -393,4 +397,32 @@ namespace Opm
             std::cerr << "Warning: Couldn't open restore file '" << filename << "'" << std::endl;
         }
     }
+
+
+    bool BlackoilOutputWriter::isRestart() const {
+        const auto initconfig = eclipseState_->getInitConfig();
+        return initconfig->getRestartInitiated();
+    }
+
+    void BlackoilOutputWriter::initFromRestartFile( const PhaseUsage& phaseusage,
+                                                    const double* permeability,
+                                                    const UnstructuredGrid& grid,
+                                                    SimulatorState& simulatorstate,
+                                                    WellStateFullyImplicitBlackoil& wellstate) {
+       WellsManager wellsmanager(eclipseState_,
+                                 eclipseState_->getInitConfig()->getRestartStep(),
+                                 Opm::UgGridHelpers::numCells(grid),
+                                 Opm::UgGridHelpers::globalCell(grid),
+                                 Opm::UgGridHelpers::cartDims(grid),
+                                 Opm::UgGridHelpers::dimensions(grid),
+                                 Opm::UgGridHelpers::cell2Faces(grid),
+                                 Opm::UgGridHelpers::beginFaceCentroids(grid),
+                                 permeability);
+
+        const Wells* wells = wellsmanager.c_wells();
+        wellstate.resize(wells, simulatorstate); //Resize for restart step
+        Opm::init_from_restart_file(eclipseState_, Opm::UgGridHelpers::numCells(grid), phaseusage, simulatorstate, wellstate);
+    }
+
+
 }
